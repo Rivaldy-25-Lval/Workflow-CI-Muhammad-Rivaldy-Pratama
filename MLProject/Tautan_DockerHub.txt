@@ -1,0 +1,80 @@
+# Docker Hub Repository Information
+
+## Docker Image Details
+
+**Docker Hub URL:** https://hub.docker.com/r/lval2505/wine-quality-ml
+
+**Image Name:** lval2505/wine-quality-ml
+
+**Tags:**
+- `latest` - Latest stable version
+- `[commit-sha]` - Specific commit version
+
+---
+
+## Pull Image Command
+
+```bash
+docker pull lval2505/wine-quality-ml:latest
+```
+
+---
+
+## Run Container Command
+
+```bash
+docker run -p 5000:5000 lval2505/wine-quality-ml:latest
+```
+
+---
+
+## Build Information
+
+- **Built with:** MLflow `mlflow models build-docker`
+- **Base Image:** Python 3.11
+- **CI/CD:** GitHub Actions workflow (`mlproject_ci.yml`)
+- **Auto-deployment:** Triggered on push to `main` branch
+
+---
+
+## GitHub Actions Workflow
+
+Workflow file: `.github/workflows/mlproject_ci.yml`
+
+**Features:**
+1. Runs MLflow training
+2. Builds Docker image using `mlflow models build-docker`
+3. Tags with commit SHA and `latest`
+4. Pushes to Docker Hub automatically
+5. Uploads artifacts to GitHub
+
+---
+
+## Usage in Production
+
+```bash
+# Pull the latest image
+docker pull lval2505/wine-quality-ml:latest
+
+# Run the ML service
+docker run -d -p 5000:5000 --name wine-ml lval2505/wine-quality-ml:latest
+
+# Test the API
+curl http://localhost:5000/invocations -H 'Content-Type: application/json' -d '{
+  "columns": ["fixed acidity", "volatile acidity", "citric acid", "residual sugar", "chlorides", "free sulfur dioxide", "total sulfur dioxide", "density", "pH", "sulphates", "alcohol"],
+  "data": [[7.4, 0.7, 0.0, 1.9, 0.076, 11.0, 34.0, 0.9978, 3.51, 0.56, 9.4]]
+}'
+```
+
+---
+
+## Notes
+
+✅ **Docker Hub Account:** lval2505  
+✅ **Account Link:** https://app.docker.com/accounts/lval2505
+
+---
+
+**Created:** November 12, 2025  
+**Project:** Wine Quality ML - MLflow CI/CD Pipeline  
+**Repository:** github.com/Rivaldy-25-Lval/Workflow-CI-Muhammad-Rivaldy-Pratama
