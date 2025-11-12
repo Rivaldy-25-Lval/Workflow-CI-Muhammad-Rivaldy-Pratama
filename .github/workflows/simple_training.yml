@@ -38,7 +38,7 @@ jobs:
         echo "Training attempted at $(date)" > training_log.txt
         
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: training-output
         path: |
