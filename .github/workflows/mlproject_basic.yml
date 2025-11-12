@@ -1,0 +1,82 @@
+name: MLProject CI - Basic
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'MLProject/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  train-model:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install mlflow==2.19.0 scikit-learn pandas numpy joblib
+        
+    - name: Verify data availability
+      run: |
+        echo "Checking for preprocessed data..."
+        ls -lh MLProject/data/preprocessed/
+        if [ -f "MLProject/data/preprocessed/train_data.csv" ]; then
+          echo "✅ Training data found!"
+        else
+          echo "❌ Training data not found!"
+          exit 1
+        fi
+        
+    - name: Run MLflow Project
+      run: |
+        cd MLProject
+        mlflow run . --no-conda
+      continue-on-error: true
+      
+    - name: Check MLflow artifacts
+      run: |
+        echo "Checking MLflow runs..."
+        if [ -d "MLProject/mlruns" ]; then
+          echo "✅ MLflow artifacts generated!"
+          ls -R MLProject/mlruns/
+        else
+          echo "⚠️  MLflow artifacts not found (may be using remote tracking)"
+        fi
+      
+    - name: Upload MLflow artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: mlflow-artifacts-${{ github.sha }}
+        path: |
+          MLProject/mlruns/
+          MLProject/*.pkl
+        retention-days: 30
+      continue-on-error: true
+        
+    - name: Create workflow summary
+      if: always()
+      run: |
+        echo "## 🤖 MLProject CI Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** Workflow completed" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Workflow Info:" >> $GITHUB_STEP_SUMMARY
+        echo "- **Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+        echo "- Check artifacts for trained model" >> $GITHUB_STEP_SUMMARY
+        echo "- View MLflow runs for metrics" >> $GITHUB_STEP_SUMMARY

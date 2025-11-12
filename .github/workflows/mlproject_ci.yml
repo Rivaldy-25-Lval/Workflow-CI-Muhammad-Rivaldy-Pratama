@@ -13,8 +13,8 @@ on:
 
 env:
   DOCKER_IMAGE_NAME: wine-quality-ml
-  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-  DAGSHUB_USER_TOKEN: ${{ secrets.DAGSHUB_USER_TOKEN }}
+  # MLFLOW_TRACKING_URI and DAGSHUB_USER_TOKEN are optional
+  # Workflow will work with local MLflow tracking if not set
 
 jobs:
   train-and-deploy:
@@ -49,10 +49,11 @@ jobs:
         pip install mlflow==2.19.0 dagshub==0.3.12
         
     - name: Setup DagsHub credentials
-      if: env.DAGSHUB_USER_TOKEN != ''
+      if: ${{ secrets.DAGSHUB_USER_TOKEN != '' }}
       run: |
         mkdir -p ~/.dagshub
         echo "${{ secrets.DAGSHUB_USER_TOKEN }}" > ~/.dagshub/token
+      continue-on-error: true
         
     - name: Verify data availability
       run: |
