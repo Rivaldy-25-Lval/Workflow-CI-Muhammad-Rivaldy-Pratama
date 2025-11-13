@@ -26,12 +26,16 @@ def load_preprocessed_data(data_dir='data/preprocessed'):
     train_data = pd.read_csv(os.path.join(data_dir, 'train_data.csv'))
     test_data = pd.read_csv(os.path.join(data_dir, 'test_data.csv'))
     
-    X_train = train_data.drop('quality_category', axis=1)
-    y_train = train_data['quality_category']
-    X_test = test_data.drop('quality_category', axis=1)
-    y_test = test_data['quality_category']
+    # Heart Disease: target column is binary (0=No Disease, 1=Disease)
+    X_train = train_data.drop('target', axis=1)
+    y_train = train_data['target']
+    X_test = test_data.drop('target', axis=1)
+    y_test = test_data['target']
     
     print(f"✅ Data loaded! Train: {len(X_train)}, Test: {len(X_test)}")
+    print(f"   Features: {X_train.shape[1]} (Heart Disease - 13 medical features)")
+    print(f"   Target distribution - Train: {y_train.value_counts().to_dict()}")
+    print(f"   Target distribution - Test: {y_test.value_counts().to_dict()}")
     return X_train, X_test, y_train, y_test
 
 
@@ -54,57 +58,68 @@ def perform_hyperparameter_tuning(X_train, y_train):
 
 
 def calculate_metrics(y_true, y_pred, y_pred_proba):
-    """Calculate all metrics"""
+    """Calculate all metrics for binary classification"""
     metrics = {
         'accuracy': accuracy_score(y_true, y_pred),
-        'precision_weighted': precision_score(y_true, y_pred, average='weighted'),
-        'recall_weighted': recall_score(y_true, y_pred, average='weighted'),
-        'f1_weighted': f1_score(y_true, y_pred, average='weighted'),
+        'precision': precision_score(y_true, y_pred),
+        'recall': recall_score(y_true, y_pred),
+        'f1_score': f1_score(y_true, y_pred),
+        'roc_auc': roc_auc_score(y_true, y_pred_proba[:, 1]),
         'log_loss': log_loss(y_true, y_pred_proba),
         'matthews_corrcoef': matthews_corrcoef(y_true, y_pred),
         'cohen_kappa': cohen_kappa_score(y_true, y_pred),
     }
     
-    try:
-        metrics['roc_auc_ovr'] = roc_auc_score(y_true, y_pred_proba, 
-                                               multi_class='ovr', average='weighted')
-    except:
-        metrics['roc_auc_ovr'] = 0.0
+    # Additional metrics for binary classification
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    metrics['specificity'] = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+    metrics['sensitivity'] = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    metrics['balanced_accuracy'] = (metrics['specificity'] + metrics['sensitivity']) / 2
     
     return metrics
 
 
 def create_artifacts(y_true, y_pred, model, feature_names):
-    """Create and save artifacts"""
+    """Create and save artifacts for binary classification"""
     os.makedirs('artifacts', exist_ok=True)
     
-    # Confusion matrix
-    plt.figure(figsize=(10, 8))
+    # Confusion matrix (2x2 for binary classification)
+    plt.figure(figsize=(8, 6))
     cm = confusion_matrix(y_true, y_pred)
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                xticklabels=['Low', 'Medium', 'High'],
-                yticklabels=['Low', 'Medium', 'High'])
-    plt.title('Confusion Matrix', fontweight='bold')
+                xticklabels=['No Disease', 'Disease'],
+                yticklabels=['No Disease', 'Disease'])
+    plt.title('Confusion Matrix - Heart Disease Classification', fontweight='bold')
     plt.ylabel('True Label')
     plt.xlabel('Predicted Label')
     plt.tight_layout()
     plt.savefig('artifacts/confusion_matrix.png', dpi=300, bbox_inches='tight')
     plt.close()
     
-    # Feature importance
+    # Feature importance (13 medical features)
     plt.figure(figsize=(12, 8))
     importances = model.feature_importances_
     indices = np.argsort(importances)[::-1]
     plt.bar(range(len(importances)), importances[indices], color='skyblue')
     plt.xticks(range(len(importances)), [feature_names[i] for i in indices], 
                rotation=45, ha='right')
-    plt.title('Feature Importances', fontweight='bold')
+    plt.title('Feature Importances - Heart Disease Prediction', fontweight='bold')
     plt.ylabel('Importance')
+    plt.xlabel('Medical Features')
     plt.tight_layout()
     plt.savefig('artifacts/feature_importance.png', dpi=300, bbox_inches='tight')
     plt.close()
     
-    return ['artifacts/confusion_matrix.png', 'artifacts/feature_importance.png']
+    # Classification report
+    report = classification_report(y_true, y_pred, 
+                                  target_names=['No Disease', 'Disease'],
+                                  output_dict=True)
+    with open('artifacts/classification_report.json', 'w') as f:
+        json.dump(report, f, indent=4)
+    
+    return ['artifacts/confusion_matrix.png', 
+            'artifacts/feature_importance.png',
+            'artifacts/classification_report.json']
 
 
 def train_model(data_dir, dagshub_owner=None, dagshub_repo=None):
@@ -123,9 +138,9 @@ def train_model(data_dir, dagshub_owner=None, dagshub_repo=None):
             print(f"Warning: Could not initialize DagsHub: {e}")
     
     # Set experiment
-    mlflow.set_experiment("Wine_Quality_MLProject")
+    mlflow.set_experiment("Heart_Disease_MLProject")
     
-    with mlflow.start_run(run_name="MLProject_CI_Training"):
+    with mlflow.start_run(run_name="MLProject_HeartDisease_CI"):
         
         # Load data
         X_train, X_test, y_train, y_test = load_preprocessed_data(data_dir)
@@ -138,6 +153,10 @@ def train_model(data_dir, dagshub_owner=None, dagshub_repo=None):
             mlflow.log_param(param, value)
         mlflow.log_param("model_type", "RandomForestClassifier")
         mlflow.log_param("data_dir", data_dir)
+        mlflow.log_param("dataset", "Heart Disease (Cleveland)")
+        mlflow.log_param("n_features", X_train.shape[1])
+        mlflow.log_param("n_train_samples", len(X_train))
+        mlflow.log_param("n_test_samples", len(X_test))
         
         # Predictions
         y_pred = best_model.predict(X_test)
@@ -163,7 +182,7 @@ def train_model(data_dir, dagshub_owner=None, dagshub_repo=None):
         mlflow.sklearn.log_model(
             best_model,
             "model",
-            registered_model_name="WineQualityClassifier_MLProject"
+            registered_model_name="HeartDiseaseClassifier_MLProject"
         )
         
         # Save model locally
@@ -174,8 +193,11 @@ def train_model(data_dir, dagshub_owner=None, dagshub_repo=None):
         print("\n" + "="*60)
         print("✅ TRAINING COMPLETED SUCCESSFULLY!")
         print("="*60)
+        print(f"Dataset: Heart Disease (Cleveland)")
+        print(f"Model: RandomForestClassifier")
         print(f"Accuracy: {metrics['accuracy']:.4f}")
-        print(f"F1 Score: {metrics['f1_weighted']:.4f}")
+        print(f"F1 Score: {metrics['f1_score']:.4f}")
+        print(f"ROC AUC: {metrics['roc_auc']:.4f}")
         print("="*60)
 
 
