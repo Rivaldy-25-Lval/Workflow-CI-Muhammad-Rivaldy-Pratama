@@ -1,4 +1,4 @@
-name: Wine_Quality_ML_Project
+name: Heart_Disease_ML_Project
 
 conda_env: conda.yaml
 
@@ -6,18 +6,18 @@ entry_points:
   main:
     parameters:
       data_dir: {type: string, default: "data/preprocessed"}
-      dagshub_owner: {type: string, default: "rivaldy"}
-      dagshub_repo: {type: string, default: "wine-quality-ml"}
-    command: "python modelling.py {data_dir} {dagshub_owner} {dagshub_repo}"
+      dagshub_owner: {type: string, default: "Rivaldy-25-Lval"}
+      dagshub_repo: {type: string, default: "Heart-Disease-ML-Training"}
+    command: "python modelling_advanced.py {data_dir} {dagshub_owner} {dagshub_repo}"
   
   train:
     parameters:
       data_dir: {type: string, default: "data/preprocessed"}
-    command: "python modelling.py {data_dir}"
+    command: "python modelling_advanced.py {data_dir}"
   
   train_advanced:
     parameters:
       data_dir: {type: string, default: "data/preprocessed"}
-      dagshub_owner: {type: string, default: "rivaldy"}
-      dagshub_repo: {type: string, default: "wine-quality-ml"}
+      dagshub_owner: {type: string, default: "Rivaldy-25-Lval"}
+      dagshub_repo: {type: string, default: "Heart-Disease-ML-Training"}
     command: "python modelling_advanced.py {data_dir} {dagshub_owner} {dagshub_repo}"
