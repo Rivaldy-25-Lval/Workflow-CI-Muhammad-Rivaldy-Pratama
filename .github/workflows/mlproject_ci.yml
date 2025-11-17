@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_IMAGE_NAME: wine-quality-ml
+  DOCKER_IMAGE_NAME: heart-disease-ml
   # MLFLOW_TRACKING_URI and DAGSHUB_USER_TOKEN are optional
   # Workflow will work with local MLflow tracking if not set
 
@@ -73,7 +73,7 @@ jobs:
         cd MLProject
         mlflow run . \
           --env-manager=conda \
-          --experiment-name="Wine_Quality_CI_Pipeline" \
+          --experiment-name="Heart_Disease_CI_Pipeline" \
           -P data_dir="../data/preprocessed" \
           -P dagshub_owner="${{ secrets.DAGSHUB_OWNER }}" \
           -P dagshub_repo="${{ secrets.DAGSHUB_REPO }}"
