@@ -127,80 +127,95 @@ def create_artifacts(y_true, y_pred, model, feature_names):
 def train_model(data_dir, dagshub_owner=None, dagshub_repo=None):
     """Main training function"""
     
-    print("="*60)
-    print("MLPROJECT TRAINING PIPELINE")
-    print("="*60)
-    
-    # Initialize DagsHub if credentials provided
-    if dagshub_owner and dagshub_repo:
-        print(f"\nInitializing DagsHub: {dagshub_owner}/{dagshub_repo}")
-        try:
-            dagshub.init(repo_owner=dagshub_owner, repo_name=dagshub_repo, mlflow=True)
-        except Exception as e:
-            print(f"Warning: Could not initialize DagsHub: {e}")
-    
-    # Set experiment
-    mlflow.set_experiment("Heart_Disease_MLProject")
-    
-    with mlflow.start_run(run_name="MLProject_HeartDisease_CI"):
+    try:
+        print("="*60)
+        print("MLPROJECT TRAINING PIPELINE")
+        print("="*60)
         
-        # Load data
-        X_train, X_test, y_train, y_test = load_preprocessed_data(data_dir)
+        # Initialize DagsHub if credentials provided
+        if dagshub_owner and dagshub_repo:
+            print(f"\nInitializing DagsHub: {dagshub_owner}/{dagshub_repo}")
+            try:
+                dagshub.init(repo_owner=dagshub_owner, repo_name=dagshub_repo, mlflow=True)
+                print("✅ DagsHub initialized successfully!")
+            except Exception as e:
+                print(f"⚠️  Warning: Could not initialize DagsHub: {e}")
+                print("   Continuing with local MLflow tracking...")
         
-        # Hyperparameter tuning
-        best_model, best_params = perform_hyperparameter_tuning(X_train, y_train)
+        # Set experiment
+        mlflow.set_experiment("Heart_Disease_MLProject")
         
-        # Log parameters
-        for param, value in best_params.items():
-            mlflow.log_param(param, value)
-        mlflow.log_param("model_type", "RandomForestClassifier")
-        mlflow.log_param("data_dir", data_dir)
-        mlflow.log_param("dataset", "Heart Disease (Cleveland)")
-        mlflow.log_param("n_features", X_train.shape[1])
-        mlflow.log_param("n_train_samples", len(X_train))
-        mlflow.log_param("n_test_samples", len(X_test))
-        
-        # Predictions
-        y_pred = best_model.predict(X_test)
-        y_pred_proba = best_model.predict_proba(X_test)
-        
-        # Calculate and log metrics
-        metrics = calculate_metrics(y_test, y_pred, y_pred_proba)
-        for metric_name, metric_value in metrics.items():
-            mlflow.log_metric(metric_name, metric_value)
-            print(f"  {metric_name}: {metric_value:.4f}")
-        
-        # Cross-validation
-        cv_scores = cross_val_score(best_model, X_train, y_train, cv=5, scoring='accuracy')
-        mlflow.log_metric("cv_score_mean", cv_scores.mean())
-        mlflow.log_metric("cv_score_std", cv_scores.std())
-        
-        # Create and log artifacts
-        artifact_paths = create_artifacts(y_test, y_pred, best_model, X_train.columns.tolist())
-        for path in artifact_paths:
-            mlflow.log_artifact(path)
-        
-        # Log model
-        mlflow.sklearn.log_model(
-            best_model,
-            "model",
-            registered_model_name="HeartDiseaseClassifier_MLProject"
-        )
-        
-        # Save model locally
-        os.makedirs('model_output', exist_ok=True)
-        joblib.dump(best_model, 'model_output/model.pkl')
-        mlflow.log_artifact('model_output/model.pkl')
-        
+        with mlflow.start_run(run_name="MLProject_HeartDisease_CI"):
+            
+            # Load data
+            X_train, X_test, y_train, y_test = load_preprocessed_data(data_dir)
+            
+            # Hyperparameter tuning
+            best_model, best_params = perform_hyperparameter_tuning(X_train, y_train)
+            
+            # Log parameters
+            for param, value in best_params.items():
+                mlflow.log_param(param, value)
+            mlflow.log_param("model_type", "RandomForestClassifier")
+            mlflow.log_param("data_dir", data_dir)
+            mlflow.log_param("dataset", "Heart Disease (Cleveland)")
+            mlflow.log_param("n_features", X_train.shape[1])
+            mlflow.log_param("n_train_samples", len(X_train))
+            mlflow.log_param("n_test_samples", len(X_test))
+            
+            # Predictions
+            y_pred = best_model.predict(X_test)
+            y_pred_proba = best_model.predict_proba(X_test)
+            
+            # Calculate and log metrics
+            metrics = calculate_metrics(y_test, y_pred, y_pred_proba)
+            for metric_name, metric_value in metrics.items():
+                mlflow.log_metric(metric_name, metric_value)
+                print(f"  {metric_name}: {metric_value:.4f}")
+            
+            # Cross-validation
+            cv_scores = cross_val_score(best_model, X_train, y_train, cv=5, scoring='accuracy')
+            mlflow.log_metric("cv_score_mean", cv_scores.mean())
+            mlflow.log_metric("cv_score_std", cv_scores.std())
+            
+            # Create and log artifacts
+            artifact_paths = create_artifacts(y_test, y_pred, best_model, X_train.columns.tolist())
+            for path in artifact_paths:
+                mlflow.log_artifact(path)
+            
+            # Log model
+            mlflow.sklearn.log_model(
+                best_model,
+                "model",
+                registered_model_name="HeartDiseaseClassifier_MLProject"
+            )
+            
+            # Save model locally
+            os.makedirs('model_output', exist_ok=True)
+            joblib.dump(best_model, 'model_output/model.pkl')
+            mlflow.log_artifact('model_output/model.pkl')
+            
+            print("\n" + "="*60)
+            print("✅ TRAINING COMPLETED SUCCESSFULLY!")
+            print("="*60)
+            print(f"Dataset: Heart Disease (Cleveland)")
+            print(f"Model: RandomForestClassifier")
+            print(f"Accuracy: {metrics['accuracy']:.4f}")
+            print(f"F1 Score: {metrics['f1_score']:.4f}")
+            print(f"ROC AUC: {metrics['roc_auc']:.4f}")
+            print("="*60)
+            
+            return 0  # Success
+            
+    except Exception as e:
         print("\n" + "="*60)
-        print("✅ TRAINING COMPLETED SUCCESSFULLY!")
+        print("❌ TRAINING FAILED!")
         print("="*60)
-        print(f"Dataset: Heart Disease (Cleveland)")
-        print(f"Model: RandomForestClassifier")
-        print(f"Accuracy: {metrics['accuracy']:.4f}")
-        print(f"F1 Score: {metrics['f1_score']:.4f}")
-        print(f"ROC AUC: {metrics['roc_auc']:.4f}")
+        print(f"Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         print("="*60)
+        return 1  # Failure
 
 
 if __name__ == "__main__":
@@ -213,4 +228,5 @@ if __name__ == "__main__":
     dagshub_owner = sys.argv[2] if len(sys.argv) > 2 else None
     dagshub_repo = sys.argv[3] if len(sys.argv) > 3 else None
     
-    train_model(data_dir, dagshub_owner, dagshub_repo)
+    exit_code = train_model(data_dir, dagshub_owner, dagshub_repo)
+    sys.exit(exit_code if exit_code else 0)
