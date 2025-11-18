@@ -14,6 +14,8 @@ import joblib
 import os
 import sys
 import json
+import matplotlib
+matplotlib.use('Agg')  # Set backend for CI/CD environments without display
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
