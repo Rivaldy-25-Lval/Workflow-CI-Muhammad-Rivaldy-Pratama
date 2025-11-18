@@ -20,7 +20,7 @@ jobs:
         
     - name: Install dependencies
       run: |
-        pip install mlflow scikit-learn pandas numpy joblib
+        pip install mlflow scikit-learn pandas numpy joblib matplotlib seaborn dagshub
         
     - name: Check data exists
       run: |
@@ -30,8 +30,9 @@ jobs:
     - name: Run training (simple)
       run: |
         cd MLProject
+        echo "=== Starting training ==="
         python modelling_advanced.py
-      continue-on-error: true
+        echo "=== Training exit code: $? ==="
         
     - name: Create success marker
       run: |
